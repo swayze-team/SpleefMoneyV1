@@ -847,24 +847,3 @@ ChatCommands:register("god", "Toggle god mode", function(args)
     end
     notify("God Mode", PlayerData.godMode and "Enabled" or "Disabled", 2)
 end)
-
--- Theme System Tab
-local TabThemes = Window:CreateTab("🎨 Themes", 4483362458)
-TabThemes:CreateSection("Interface Customization")
-
-for themeName, themeData in pairs(Themes) do
-    TabThemes:CreateButton({
-        Name = "Apply " .. themeName .. " Theme",
-        Callback = function()
-            currentTheme = themeData
-            notify("Theme System", "Applied " .. themeName .. " theme", 2)
-            
-            -- Here you would apply the theme to the UI
-            -- This is a placeholder as Rayfield handles themes differently
-        end
-    })
-end
-
-TabThemes:CreateToggle({
-    Name = "Rainbow Mode",
-    CurrentValue = false,

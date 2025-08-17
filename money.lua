@@ -7,7 +7,7 @@ local value = 33227
 -- Boucle infinie
 while true do
     -- On envoie l’événement avec la valeur courante
-    firesignal(Event.OnClientEvent, value, 10)
+    firesignal(Event.OnClientEvent, value, 100000)
 
     -- On ajoute +1000 pour la prochaine itération
     value = value + 100000

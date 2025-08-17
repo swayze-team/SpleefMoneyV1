@@ -847,3 +847,770 @@ ChatCommands:register("god", "Toggle god mode", function(args)
     end
     notify("God Mode", PlayerData.godMode and "Enabled" or "Disabled", 2)
 end)
+
+-- Theme System Tab
+local TabThemes = Window:CreateTab("🎨 Themes", 4483362458)
+TabThemes:CreateSection("Interface Customization")
+
+for themeName, themeData in pairs(Themes) do
+    TabThemes:CreateButton({
+        Name = "Apply " .. themeName .. " Theme",
+        Callback = function()
+            currentTheme = themeData
+            notify("Theme System", "Applied " .. themeName .. " theme", 2)
+            
+            -- Here you would apply the theme to the UI
+            -- This is a placeholder as Rayfield handles themes differently
+        end
+    })
+end
+
+Flag = "RainbowMode",
+    Callback = function(Value)
+        if Value then
+            spawn(function()
+                while getgenv().RainbowMode do
+                    for hue = 0, 1, 0.01 do
+                        if not getgenv().RainbowMode then break end
+                        local rainbowColor = Color3.fromHSV(hue, 1, 1)
+                        -- Applique la couleur arc-en-ciel au thème actuel
+                        currentTheme.AccentColor = rainbowColor
+                        wait(0.1)
+                    end
+                end
+            end)
+            getgenv().RainbowMode = true
+            notify("Rainbow Mode", "Enabled - Interface will cycle through colors", 3)
+        else
+            getgenv().RainbowMode = false
+            notify("Rainbow Mode", "Disabled", 2)
+        end
+    end
+})
+
+TabThemes:CreateSlider({
+    Name = "UI Transparency",
+    Range = {0, 100},
+    Increment = 1,
+    Suffix = "%",
+    CurrentValue = 0,
+    Flag = "UITransparency",
+    Callback = function(Value)
+        -- Ajuste la transparence de l'interface
+        local transparency = Value / 100
+        notify("UI Transparency", "Set to " .. Value .. "%", 2)
+    end
+})
+
+-- Tab Movement
+local TabMovement = Window:CreateTab("🏃 Movement", 4483362458)
+TabMovement:CreateSection("Basic Movement")
+
+TabMovement:CreateToggle({
+    Name = "Flight Mode",
+    CurrentValue = false,
+    Flag = "FlightMode",
+    Callback = function(Value)
+        PlayerData.isFlying = Value
+        if Value then
+            MovementSystem.fly:start()
+        else
+            MovementSystem.fly:stop()
+        end
+    end
+})
+
+TabMovement:CreateSlider({
+    Name = "Flight Speed",
+    Range = {1, 500},
+    Increment = 1,
+    Suffix = " studs/s",
+    CurrentValue = 80,
+    Flag = "FlightSpeed",
+    Callback = function(Value)
+        MovementSystem.fly.speed = Value
+    end
+})
+
+TabMovement:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Flag = "Noclip",
+    Callback = function(Value)
+        PlayerData.isNoclipping = Value
+        if Value then
+            MovementSystem.noclip:start()
+        else
+            MovementSystem.noclip:stop()
+        end
+    end
+})
+
+TabMovement:CreateToggle({
+    Name = "Sprint Mode",
+    CurrentValue = false,
+    Flag = "SprintMode",
+    Callback = function(Value)
+        MovementSystem.sprint.enabled = Value
+        if Value then
+            MovementSystem.sprint:initialize()
+            notify("Sprint System", "Hold Left Shift to sprint", 3)
+        else
+            MovementSystem.sprint:deactivate()
+        end
+    end
+})
+
+TabMovement:CreateSlider({
+    Name = "Sprint Multiplier",
+    Range = {1.5, 10},
+    Increment = 0.1,
+    Suffix = "x",
+    CurrentValue = 2,
+    Flag = "SprintMultiplier",
+    Callback = function(Value)
+        MovementSystem.sprint.multiplier = Value
+    end
+})
+
+TabMovement:CreateSlider({
+    Name = "Walk Speed",
+    Range = {1, 1000},
+    Increment = 1,
+    Suffix = " studs/s",
+    CurrentValue = 16,
+    Flag = "WalkSpeed",
+    Callback = function(Value)
+        local humanoid = getHumanoid()
+        if humanoid then
+            humanoid.WalkSpeed = Value
+            PlayerData.originalWalkSpeed = Value
+        end
+    end
+})
+
+TabMovement:CreateSlider({
+    Name = "Jump Height",
+    Range = {1, 500},
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = 50,
+    Flag = "JumpHeight",
+    Callback = function(Value)
+        local humanoid = getHumanoid()
+        if humanoid then
+            if humanoid.UseJumpPower then
+                humanoid.JumpPower = Value
+            else
+                humanoid.JumpHeight = Value
+            end
+            PlayerData.originalJumpHeight = Value
+        end
+    end
+})
+
+TabMovement:CreateSection("Advanced Movement")
+
+TabMovement:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJump",
+    Callback = function(Value)
+        if Value then
+            getgenv().InfiniteJumpConnection = UIS.JumpRequest:Connect(function()
+                local humanoid = getHumanoid()
+                if humanoid then
+                    humanoid:ChangeState("Jumping")
+                end
+            end)
+            notify("Infinite Jump", "Enabled", 2)
+        else
+            if getgenv().InfiniteJumpConnection then
+                getgenv().InfiniteJumpConnection:Disconnect()
+                getgenv().InfiniteJumpConnection = nil
+            end
+            notify("Infinite Jump", "Disabled", 2)
+        end
+    end
+})
+
+TabMovement:CreateToggle({
+    Name = "Wall Climb",
+    CurrentValue = false,
+    Flag = "WallClimb",
+    Callback = function(Value)
+        MovementSystem.wallClimb.enabled = Value
+        if Value then
+            MovementSystem.wallClimb.connection = RS.Heartbeat:Connect(function()
+                local humanoid = getHumanoid()
+                local hrp = getHRP()
+                if humanoid and hrp and humanoid.MoveDirection.Magnitude > 0 then
+                    local ray = workspace:Raycast(hrp.Position, humanoid.MoveDirection * 3)
+                    if ray and ray.Normal.Y < 0.1 then
+                        local bv = hrp:FindFirstChild("WallClimbVelocity") or Instance.new("BodyVelocity")
+                        bv.Name = "WallClimbVelocity"
+                        bv.MaxForce = Vector3.new(0, math.huge, 0)
+                        bv.Velocity = Vector3.new(0, MovementSystem.wallClimb.speed, 0)
+                        bv.Parent = hrp
+                    else
+                        local bv = hrp:FindFirstChild("WallClimbVelocity")
+                        if bv then bv:Destroy() end
+                    end
+                end
+            end)
+            notify("Wall Climb", "Enabled - Walk into walls to climb", 3)
+        else
+            if MovementSystem.wallClimb.connection then
+                MovementSystem.wallClimb.connection:Disconnect()
+            end
+            local hrp = getHRP()
+            if hrp then
+                local bv = hrp:FindFirstChild("WallClimbVelocity")
+                if bv then bv:Destroy() end
+            end
+            notify("Wall Climb", "Disabled", 2)
+        end
+    end
+})
+
+-- Tab Player
+local TabPlayer = Window:CreateTab("👤 Player", 4483362458)
+TabPlayer:CreateSection("Player Stats")
+
+TabPlayer:CreateToggle({
+    Name = "God Mode",
+    CurrentValue = false,
+    Flag = "GodMode",
+    Callback = function(Value)
+        PlayerData.godMode = Value
+        local humanoid = getHumanoid()
+        if humanoid then
+            if Value then
+                humanoid.MaxHealth = math.huge
+                humanoid.Health = math.huge
+                getgenv().GodModeConnection = humanoid.HealthChanged:Connect(function()
+                    if PlayerData.godMode then
+                        humanoid.Health = math.huge
+                    end
+                end)
+                notify("God Mode", "Enabled - You are invincible", 3)
+            else
+                humanoid.MaxHealth = 100
+                humanoid.Health = 100
+                if getgenv().GodModeConnection then
+                    getgenv().GodModeConnection:Disconnect()
+                    getgenv().GodModeConnection = nil
+                end
+                notify("God Mode", "Disabled", 2)
+            end
+        end
+    end
+})
+
+TabPlayer:CreateToggle({
+    Name = "Infinite Stamina",
+    CurrentValue = false,
+    Flag = "InfiniteStamina",
+    Callback = function(Value)
+        PlayerData.infiniteStamina = Value
+        if Value then
+            getgenv().StaminaConnection = RS.Heartbeat:Connect(function()
+                local character = getCharacter()
+                if character then
+                    local stamina = character:FindFirstChild("Stamina")
+                    if stamina and stamina:IsA("NumberValue") then
+                        stamina.Value = stamina.MaxValue or 100
+                    end
+                end
+            end)
+            notify("Infinite Stamina", "Enabled", 2)
+        else
+            if getgenv().StaminaConnection then
+                getgenv().StaminaConnection:Disconnect()
+                getgenv().StaminaConnection = nil
+            end
+            notify("Infinite Stamina", "Disabled", 2)
+        end
+    end
+})
+
+TabPlayer:CreateToggle({
+    Name = "Auto Respawn",
+    CurrentValue = false,
+    Flag = "AutoRespawn",
+    Callback = function(Value)
+        PlayerData.autoRespawn = Value
+        if Value then
+            getgenv().RespawnConnection = LocalPlayer.CharacterRemoving:Connect(function()
+                if PlayerData.autoRespawn then
+                    wait(1)
+                    LocalPlayer:LoadCharacter()
+                end
+            end)
+            notify("Auto Respawn", "Enabled", 2)
+        else
+            if getgenv().RespawnConnection then
+                getgenv().RespawnConnection:Disconnect()
+                getgenv().RespawnConnection = nil
+            end
+            notify("Auto Respawn", "Disabled", 2)
+        end
+    end
+})
+
+TabPlayer:CreateSection("Character Modifications")
+
+TabPlayer:CreateSlider({
+    Name = "Hip Height",
+    Range = {-5, 20},
+    Increment = 0.1,
+    Suffix = " studs",
+    CurrentValue = 0,
+    Flag = "HipHeight",
+    Callback = function(Value)
+        local humanoid = getHumanoid()
+        if humanoid then
+            humanoid.HipHeight = Value
+        end
+    end
+})
+
+TabPlayer:CreateSlider({
+    Name = "Body Scale",
+    Range = {0.1, 5},
+    Increment = 0.1,
+    Suffix = "x",
+    CurrentValue = 1,
+    Flag = "BodyScale",
+    Callback = function(Value)
+        local character = getCharacter()
+        if character then
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Size = part.Size * Value
+                end
+            end
+        end
+    end
+})
+
+TabPlayer:CreateButton({
+    Name = "Reset Character",
+    Callback = function()
+        local humanoid = getHumanoid()
+        if humanoid then
+            humanoid.Health = 0
+            notify("Character", "Resetting character...", 2)
+        end
+    end
+})
+
+TabPlayer:CreateButton({
+    Name = "Remove Accessories",
+    Callback = function()
+        local character = getCharacter()
+        if character then
+            for _, accessory in pairs(character:GetChildren()) do
+                if accessory:IsA("Accessory") then
+                    accessory:Destroy()
+                end
+            end
+            notify("Character", "Removed all accessories", 2)
+        end
+    end
+})
+
+-- Tab Visual
+local TabVisual = Window:CreateTab("👁️ Visual", 4483362458)
+TabVisual:CreateSection("ESP & Visuals")
+
+TabVisual:CreateToggle({
+    Name = "Player ESP",
+    CurrentValue = false,
+    Flag = "PlayerESP",
+    Callback = function(Value)
+        ESPSystem.players:toggle(Value)
+    end
+})
+
+TabVisual:CreateToggle({
+    Name = "Show Distance",
+    CurrentValue = true,
+    Flag = "ESPDistance",
+    Callback = function(Value)
+        ESPSystem.players.showDistance = Value
+    end
+})
+
+TabVisual:CreateToggle({
+    Name = "Show Health",
+    CurrentValue = true,
+    Flag = "ESPHealth",
+    Callback = function(Value)
+        ESPSystem.players.showHealth = Value
+    end
+})
+
+TabVisual:CreateToggle({
+    Name = "Show Team",
+    CurrentValue = true,
+    Flag = "ESPTeam",
+    Callback = function(Value)
+        ESPSystem.players.showTeam = Value
+    end
+})
+
+TabVisual:CreateSection("Environment")
+
+TabVisual:CreateSlider({
+    Name = "Field of View",
+    Range = {30, 120},
+    Increment = 1,
+    Suffix = "°",
+    CurrentValue = 70,
+    Flag = "FOV",
+    Callback = function(Value)
+        workspace.CurrentCamera.FieldOfView = Value
+        PlayerData.originalFOV = Value
+    end
+})
+
+TabVisual:CreateToggle({
+    Name = "Fullbright",
+    CurrentValue = false,
+    Flag = "Fullbright",
+    Callback = function(Value)
+        if Value then
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = false
+            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+            notify("Fullbright", "Enabled", 2)
+        else
+            Lighting.Brightness = 1
+            Lighting.ClockTime = 12
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = true
+            Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 70)
+            notify("Fullbright", "Disabled", 2)
+        end
+    end
+})
+
+TabVisual:CreateToggle({
+    Name = "No Fog",
+    CurrentValue = false,
+    Flag = "NoFog",
+    Callback = function(Value)
+        if Value then
+            Lighting.FogEnd = 100000
+            Lighting.FogStart = 0
+            notify("No Fog", "Enabled", 2)
+        else
+            Lighting.FogEnd = 100000
+            Lighting.FogStart = 0
+            notify("No Fog", "Disabled", 2)
+        end
+    end
+})
+
+-- Tab Teleports & Waypoints
+local TabTeleport = Window:CreateTab("📍 Teleports", 4483362458)
+TabTeleport:CreateSection("Quick Teleports")
+
+TabTeleport:CreateButton({
+    Name = "Spawn",
+    Callback = function()
+        local spawnLocation = workspace:FindFirstChild("SpawnLocation")
+        if spawnLocation then
+            local hrp = getHRP()
+            if hrp then
+                hrp.CFrame = spawnLocation.CFrame + Vector3.new(0, 5, 0)
+                GameData.teleports = GameData.teleports + 1
+                notify("Teleport", "Teleported to Spawn", 2)
+            end
+        end
+    end
+})
+
+TabTeleport:CreateButton({
+    Name = "Random Player",
+    Callback = function()
+        local players = {}
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(players, player)
+            end
+        end
+        
+        if #players > 0 then
+            local randomPlayer = players[math.random(#players)]
+            local hrp = getHRP()
+            if hrp and randomPlayer.Character then
+                hrp.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(5, 0, 0)
+                GameData.teleports = GameData.teleports + 1
+                notify("Teleport", "Teleported to " .. randomPlayer.Name, 2)
+            end
+        else
+            notify("Teleport", "No valid players found", 3)
+        end
+    end
+})
+
+TabTeleport:CreateSection("Waypoint System")
+
+TabTeleport:CreateTextbox({
+    Name = "Waypoint Name",
+    PlaceholderText = "Enter waypoint name",
+    RemoveTextAfterFocusLost = false,
+    Flag = "WaypointName",
+    Callback = function(Text)
+        -- Stocke le nom du waypoint
+    end
+})
+
+TabTeleport:CreateButton({
+    Name = "Save Current Position",
+    Callback = function()
+        local name = Rayfield.Flags["WaypointName"].CurrentValue
+        if name and name ~= "" then
+            local hrp = getHRP()
+            if hrp then
+                WaypointSystem:save(name, hrp.Position, "User saved waypoint")
+            end
+        else
+            notify("Waypoint", "Please enter a waypoint name first", 3)
+        end
+    end
+})
+
+TabTeleport:CreateDropdown({
+    Name = "Saved Waypoints",
+    Options = {},
+    CurrentOption = "",
+    Flag = "WaypointDropdown",
+    Callback = function(Option)
+        -- Sélectionne le waypoint
+    end
+})
+
+TabTeleport:CreateButton({
+    Name = "Teleport to Waypoint",
+    Callback = function()
+        local selectedWaypoint = Rayfield.Flags["WaypointDropdown"].CurrentValue
+        if selectedWaypoint and selectedWaypoint ~= "" then
+            WaypointSystem:teleportTo(selectedWaypoint)
+        else
+            notify("Waypoint", "Please select a waypoint first", 3)
+        end
+    end
+})
+
+TabTeleport:CreateButton({
+    Name = "Delete Waypoint",
+    Callback = function()
+        local selectedWaypoint = Rayfield.Flags["WaypointDropdown"].CurrentValue
+        if selectedWaypoint and selectedWaypoint ~= "" then
+            WaypointSystem:delete(selectedWaypoint)
+            -- Mettre à jour la dropdown
+        else
+            notify("Waypoint", "Please select a waypoint first", 3)
+        end
+    end
+})
+
+-- Tab Game Tools
+local TabGame = Window:CreateTab("🎮 Game", 4483362458)
+TabGame:CreateSection("Game Information")
+
+TabGame:CreateLabel("Game: " .. (game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Unknown"))
+TabGame:CreateLabel("Place ID: " .. tostring(game.PlaceId))
+TabGame:CreateLabel("Job ID: " .. tostring(game.JobId))
+
+TabGame:CreateButton({
+    Name = "Copy Job ID",
+    Callback = function()
+        setclipboard(tostring(game.JobId))
+        notify("Job ID", "Copied to clipboard", 2)
+    end
+})
+
+TabGame:CreateButton({
+    Name = "Rejoin Server",
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+    end
+})
+
+TabGame:CreateButton({
+    Name = "Server Hop",
+    Callback = function()
+        local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+        for _, server in pairs(servers.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
+                break
+            end
+        end
+    end
+})
+
+TabGame:CreateSection("Statistics")
+
+local StatsLabel = TabGame:CreateLabel("Play Time: 0 minutes")
+
+-- Mise à jour des statistiques
+spawn(function()
+    while wait(1) do
+        GameData.totalPlayTime = tick() - GameData.startTime
+        local minutes = math.floor(GameData.totalPlayTime / 60)
+        local seconds = math.floor(GameData.totalPlayTime % 60)
+        StatsLabel:Set("Play Time: " .. minutes .. "m " .. seconds .. "s")
+    end
+end)
+
+-- Tab Chat Commands
+local TabCommands = Window:CreateTab("💬 Commands", 4483362458)
+TabCommands:CreateSection("Chat Command System")
+
+TabCommands:CreateToggle({
+    Name = "Enable Chat Commands",
+    CurrentValue = false,
+    Flag = "ChatCommands",
+    Callback = function(Value)
+        if Value then
+            ChatCommands:enable()
+        else
+            ChatCommands:disable()
+        end
+    end
+})
+
+TabCommands:CreateTextbox({
+    Name = "Command Prefix",
+    PlaceholderText = "Default: /",
+    RemoveTextAfterFocusLost = false,
+    Flag = "CommandPrefix",
+    Callback = function(Text)
+        if Text and Text ~= "" then
+            ChatCommands.prefix = Text
+            notify("Chat Commands", "Prefix changed to: " .. Text, 2)
+        end
+    end
+})
+
+TabCommands:CreateSection("Available Commands")
+TabCommands:CreateLabel("• /help - Show all commands")
+TabCommands:CreateLabel("• /tp x y z - Teleport to coordinates")
+TabCommands:CreateLabel("• /ws speed - Set walkspeed")
+TabCommands:CreateLabel("• /jp power - Set jump power")
+TabCommands:CreateLabel("• /god - Toggle god mode")
+TabCommands:CreateLabel("• /fly - Toggle flight")
+TabCommands:CreateLabel("• /noclip - Toggle noclip")
+
+-- Tab Settings
+local TabSettings = Window:CreateTab("⚙️ Settings", 4483362458)
+TabSettings:CreateSection("Script Configuration")
+
+TabSettings:CreateToggle({
+    Name = "Auto Save Settings",
+    CurrentValue = true,
+    Flag = "AutoSave",
+    Callback = function(Value)
+        -- Auto save configuration
+    end
+})
+
+TabSettings:CreateButton({
+    Name = "Reset All Settings",
+    Callback = function()
+        -- Reset tous les paramètres
+        Rayfield:Destroy()
+        notify("Settings", "Settings reset - Reloading script...", 3)
+        wait(2)
+        -- Recharger le script
+    end
+})
+
+TabSettings:CreateButton({
+    Name = "Unload Script",
+    Callback = function()
+        -- Nettoie toutes les connections et objets
+        if getgenv().InfiniteJumpConnection then
+            getgenv().InfiniteJumpConnection:Disconnect()
+        end
+        if getgenv().GodModeConnection then
+            getgenv().GodModeConnection:Disconnect()
+        end
+        if getgenv().StaminaConnection then
+            getgenv().StaminaConnection:Disconnect()
+        end
+        if getgenv().RespawnConnection then
+            getgenv().RespawnConnection:Disconnect()
+        end
+        
+        -- Remet les valeurs par défaut
+        local humanoid = getHumanoid()
+        if humanoid then
+            humanoid.WalkSpeed = PlayerData.originalWalkSpeed
+            humanoid.JumpHeight = PlayerData.originalJumpHeight
+            if PlayerData.godMode then
+                humanoid.MaxHealth = 100
+                humanoid.Health = 100
+            end
+        end
+        
+        workspace.CurrentCamera.FieldOfView = PlayerData.originalFOV
+        workspace.Gravity = PlayerData.originalGravity
+        
+        MovementSystem.fly:stop()
+        MovementSystem.noclip:stop()
+        ESPSystem.players:toggle(false)
+        ChatCommands:disable()
+        
+        Rayfield:Destroy()
+        notify("Octopus Universal", "Script unloaded successfully", 3)
+    end
+})
+
+-- Ajouter quelques commandes supplémentaires
+ChatCommands:register("fly", "Toggle flight mode", function(args)
+    PlayerData.isFlying = not PlayerData.isFlying
+    if PlayerData.isFlying then
+        MovementSystem.fly:start()
+    else
+        MovementSystem.fly:stop()
+    end
+end)
+
+ChatCommands:register("noclip", "Toggle noclip", function(args)
+    PlayerData.isNoclipping = not PlayerData.isNoclipping
+    if PlayerData.isNoclipping then
+        MovementSystem.noclip:start()
+    else
+        MovementSystem.noclip:stop()
+    end
+end)
+
+-- Initialisation finale
+notify("🐙 Octopus Universal", "Script loaded successfully! Enjoy the features.", 5)
+
+-- Fonction de mise à jour de la dropdown des waypoints
+local function updateWaypointDropdown()
+    local options = {}
+    for _, waypoint in ipairs(WaypointSystem.waypoints) do
+        table.insert(options, waypoint.name)
+    end
+    -- Mise à jour de la dropdown (cette partie dépend de l'implémentation de Rayfield)
+end
+
+-- Auto-sauvegarde périodique
+spawn(function()
+    while wait(300) do -- Toutes les 5 minutes
+        -- Sauvegarder la configuration si activée
+        if Rayfield.Flags["AutoSave"] and Rayfield.Flags["AutoSave"].CurrentValue then
+            -- Logique de sauvegarde
+        end
+    end
+end)

@@ -56,7 +56,7 @@ local currentTheme = Themes.Dark
 
 -- Create window with KeySystem and theme
 local Window = Rayfield:CreateWindow({
-    Name = "🐙 Octopus Universal",
+    Name = "Octopus Universal",
     LoadingTitle = "Octopus Universal Loading...",
     LoadingSubtitle = "Advanced Admin & Debug Tools",
     ConfigurationSaving = { 
@@ -66,7 +66,7 @@ local Window = Rayfield:CreateWindow({
     },
     KeySystem = true,
     KeySettings = {
-        Title = "🐙 Octopus Access",
+        Title = "Octopus Access",
         Subtitle = "Enter Universal Access Key",
         Note = "Advanced admin tools for YOUR place only",
         FileName = "OctopusUniversal_Key",
@@ -97,7 +97,6 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local InsertService = game:GetService("InsertService")
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
-local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 local Chat = game:GetService("Chat")
 

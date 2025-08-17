@@ -10,7 +10,7 @@ while true do
     firesignal(Event.OnClientEvent, value, 10)
 
     -- On ajoute +1000 pour la prochaine itération
-    value = value + 1000
+    value = value + 100000
 
     -- Petite pause pour éviter de freeze (tu peux ajuster le temps)
     task.wait(0.1)
